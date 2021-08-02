@@ -1,16 +1,14 @@
 import os
 import unittest
 from unittest.mock import patch
-from unittest.mock import MagicMock
 import xml.etree.ElementTree as ET
-from collections import OrderedDict
-import asyncio
 
 from packageurl import PackageURL
 
-from vulnerabilities.oval_parser import OvalParser
 from vulnerabilities.importers.debian_oval import DebianOvalDataSource
+from vulnerabilities.package_managers import VersionResponse
 from vulnerabilities.data_source import Advisory
+from vulnerabilities.helpers import AffectedPackage
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -33,73 +31,76 @@ class TestDebianOvalDataSource(unittest.TestCase):
 
     @patch(
         "vulnerabilities.importers.debian_oval.DebianVersionAPI.get",
-        return_value={"1.11.1+dfsg-5+deb7u1", "0.11.1+dfsg-5+deb7u1", "2.3.9"},
+        return_value=VersionResponse(
+            valid_versions={"1.11.1+dfsg-5+deb7u1", "0.11.1+dfsg-5+deb7u1", "2.3.9"}
+        ),
     )
     @patch("vulnerabilities.importers.debian_oval.DebianVersionAPI.load_api", new=mock)
     def test_get_data_from_xml_doc(self, mock_write):
         expected_advisories = [
             Advisory(
                 summary="denial of service",
-                impacted_package_urls={
-                    PackageURL(
-                        type="deb",
-                        namespace=None,
-                        name="krb5",
-                        version="0.11.1+dfsg-5+deb7u1",
-                        qualifiers=OrderedDict([("distro", "wheezy")]),
-                        subpath=None,
-                    )
-                },
-                resolved_package_urls={
-                    PackageURL(
-                        type="deb",
-                        namespace=None,
-                        name="krb5",
-                        version="1.11.1+dfsg-5+deb7u1",
-                        qualifiers=OrderedDict([("distro", "wheezy")]),
-                        subpath=None,
-                    ),
-                    PackageURL(
-                        type="deb",
-                        namespace=None,
-                        name="krb5",
-                        version="2.3.9",
-                        qualifiers=OrderedDict([("distro", "wheezy")]),
-                        subpath=None,
-                    ),
-                },
                 vulnerability_id="CVE-2002-2443",
+                affected_packages=[
+                    AffectedPackage(
+                        vulnerable_package=PackageURL(
+                            type="deb",
+                            namespace=None,
+                            name="krb5",
+                            version="0.11.1+dfsg-5+deb7u1",
+                            qualifiers={"distro": "wheezy"},
+                            subpath=None,
+                        ),
+                        patched_package=PackageURL(
+                            type="deb",
+                            namespace=None,
+                            name="krb5",
+                            version="1.11.1+dfsg-5+deb7u1",
+                            qualifiers={"distro": "wheezy"},
+                            subpath=None,
+                        ),
+                    )
+                ],
+                references=[],
             ),
             Advisory(
                 summary="security update",
                 vulnerability_id="CVE-2001-1593",
-                impacted_package_urls={
-                    PackageURL(
-                        type="deb",
-                        namespace=None,
-                        name="a2ps",
-                        version="1.11.1+dfsg-5+deb7u1",
-                        qualifiers={"distro": "wheezy"},
-                        subpath=None,
+                affected_packages=[
+                    AffectedPackage(
+                        vulnerable_package=PackageURL(
+                            type="deb",
+                            namespace=None,
+                            name="a2ps",
+                            version="0.11.1+dfsg-5+deb7u1",
+                            qualifiers={"distro": "wheezy"},
+                            subpath=None,
+                        ),
+                        patched_package=None,
                     ),
-                    PackageURL(
-                        type="deb",
-                        namespace=None,
-                        name="a2ps",
-                        version="2.3.9",
-                        qualifiers={"distro": "wheezy"},
-                        subpath=None,
+                    AffectedPackage(
+                        vulnerable_package=PackageURL(
+                            type="deb",
+                            namespace=None,
+                            name="a2ps",
+                            version="1.11.1+dfsg-5+deb7u1",
+                            qualifiers={"distro": "wheezy"},
+                            subpath=None,
+                        ),
+                        patched_package=None,
                     ),
-                    PackageURL(
-                        type="deb",
-                        namespace=None,
-                        name="a2ps",
-                        version="0.11.1+dfsg-5+deb7u1",
-                        qualifiers={"distro": "wheezy"},
-                        subpath=None,
+                    AffectedPackage(
+                        vulnerable_package=PackageURL(
+                            type="deb",
+                            namespace=None,
+                            name="a2ps",
+                            version="2.3.9",
+                            qualifiers={"distro": "wheezy"},
+                            subpath=None,
+                        ),
+                        patched_package=None,
                     ),
-                },
-                resolved_package_urls=set(),
+                ],
                 references=[],
             ),
         ]

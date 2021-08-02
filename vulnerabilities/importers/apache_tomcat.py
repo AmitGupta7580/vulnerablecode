@@ -29,6 +29,7 @@ import requests
 from bs4 import BeautifulSoup
 from univers.version_specifier import VersionSpecifier
 from univers.versions import MavenVersion
+from univers.versions import SemverVersion
 from packageurl import PackageURL
 
 from vulnerabilities.data_source import Advisory
@@ -36,6 +37,7 @@ from vulnerabilities.data_source import DataSource
 from vulnerabilities.data_source import DataSourceConfiguration
 from vulnerabilities.data_source import Reference
 from vulnerabilities.helpers import create_etag
+from vulnerabilities.helpers import nearest_patched_package
 from vulnerabilities.package_managers import MavenVersionAPI
 
 
@@ -61,7 +63,11 @@ class ApacheTomcatDataSource(DataSource):
         return self.batch_advisories(advisories)
 
     def fetch_pages(self):
-        tomcat_major_versions = {i[0] for i in self.version_api.get("org.apache.tomcat:tomcat")}
+        # Here Semver is used because it has notion of major, minor versions.
+        tomcat_major_versions = {
+            SemverVersion(i).value.major
+            for i in self.version_api.get("org.apache.tomcat:tomcat").valid_versions
+        }
         for version in tomcat_major_versions:
             page_url = self.base_url.format(version)
             if create_etag(self, page_url, "ETag"):
@@ -101,7 +107,9 @@ class ApacheTomcatDataSource(DataSource):
                             PackageURL(
                                 type="maven", namespace="apache", name="tomcat", version=version
                             )
-                            for version in self.version_api.get("org.apache.tomcat:tomcat")
+                            for version in self.version_api.get(
+                                "org.apache.tomcat:tomcat"
+                            ).valid_versions
                             if MavenVersion(version) in version_range
                         ]
                     )
@@ -115,8 +123,7 @@ class ApacheTomcatDataSource(DataSource):
                 advisories.append(
                     Advisory(
                         summary="",
-                        impacted_package_urls=affected_packages,
-                        resolved_package_urls=fixed_package,
+                        affected_packages=nearest_patched_package(affected_packages, fixed_package),
                         vulnerability_id=cve_id,
                         references=references,
                     )

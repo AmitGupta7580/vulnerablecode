@@ -22,12 +22,10 @@
 
 import csv
 import dataclasses
-import re
 import urllib.request
 
 # Reading CSV file from  a url using `requests` is bit too complicated.
 # Use `urllib.request` for that purpose.
-from packageurl import PackageURL
 
 
 from vulnerabilities.data_source import Advisory
@@ -80,7 +78,7 @@ class ProjectKBMSRDataSource(DataSource):
             advisories.append(
                 Advisory(
                     summary="",
-                    impacted_package_urls=[],
+                    affected_packages=[],
                     references=[reference],
                     vulnerability_id=vuln_id,
                 )

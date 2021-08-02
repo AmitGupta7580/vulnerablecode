@@ -23,6 +23,8 @@
 import asyncio
 from typing import Set
 from typing import List
+from dateutil.parser import parse
+from pytz import UTC
 
 from packageurl import PackageURL
 from univers.version_specifier import VersionSpecifier
@@ -33,6 +35,7 @@ from vulnerabilities.data_source import GitDataSource
 from vulnerabilities.data_source import Reference
 from vulnerabilities.package_managers import RubyVersionAPI
 from vulnerabilities.helpers import load_yaml
+from vulnerabilities.helpers import nearest_patched_package
 
 
 class RubyDataSource(GitDataSource):
@@ -51,16 +54,7 @@ class RubyDataSource(GitDataSource):
         asyncio.run(self.pkg_manager_api.load_api(packages))
 
     def updated_advisories(self) -> Set[Advisory]:
-        files = self._updated_files
-        advisories = []
-        for f in files:
-            processed_data = self.process_file(f)
-            if processed_data:
-                advisories.append(processed_data)
-        return self.batch_advisories(advisories)
-
-    def added_advisories(self) -> Set[Advisory]:
-        files = self._added_files
+        files = self._updated_files.union(self._added_files)
         advisories = []
         for f in files:
             processed_data = self.process_file(f)
@@ -89,6 +83,7 @@ class RubyDataSource(GitDataSource):
         else:
             return
 
+        publish_time = parse(record["date"]).replace(tzinfo=UTC)
         safe_version_ranges = record.get("patched_versions", [])
         # this case happens when the advisory contain only 'patched_versions' field
         # and it has value None(i.e it is empty :( ).
@@ -99,26 +94,26 @@ class RubyDataSource(GitDataSource):
 
         if not getattr(self, "pkg_manager_api", None):
             self.pkg_manager_api = RubyVersionAPI()
-        all_vers = self.pkg_manager_api.get(package_name)
+        all_vers = self.pkg_manager_api.get(package_name, until=publish_time).valid_versions
         safe_versions, affected_versions = self.categorize_versions(all_vers, safe_version_ranges)
 
-        impacted_purls = {
+        impacted_purls = [
             PackageURL(
                 name=package_name,
                 type="gem",
                 version=version,
             )
             for version in affected_versions
-        }
+        ]
 
-        resolved_purls = {
+        resolved_purls = [
             PackageURL(
                 name=package_name,
                 type="gem",
                 version=version,
             )
             for version in safe_versions
-        }
+        ]
 
         references = []
         if record.get("url"):
@@ -126,8 +121,7 @@ class RubyDataSource(GitDataSource):
 
         return Advisory(
             summary=record.get("description", ""),
-            impacted_package_urls=impacted_purls,
-            resolved_package_urls=resolved_purls,
+            affected_packages=nearest_patched_package(impacted_purls, resolved_purls),
             references=references,
             vulnerability_id=cve_id,
         )
@@ -140,12 +134,18 @@ class RubyDataSource(GitDataSource):
                 "semver", elem
             )
 
-        safe_versions = set()
+        safe_versions = []
+        vulnerable_versions = []
         for i in all_versions:
             vobj = SemverVersion(i)
-
+            is_vulnerable = False
             for ver_rng in unaffected_version_ranges:
                 if vobj in ver_rng:
-                    safe_versions.add(i)
+                    safe_versions.append(i)
+                    is_vulnerable = True
+                    break
 
-        return (safe_versions, all_versions - safe_versions)
+            if not is_vulnerable:
+                vulnerable_versions.append(i)
+
+        return safe_versions, vulnerable_versions

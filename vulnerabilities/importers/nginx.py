@@ -22,7 +22,6 @@
 
 import asyncio
 import dataclasses
-import json
 
 import requests
 from packageurl import PackageURL
@@ -35,7 +34,8 @@ from vulnerabilities.data_source import DataSource
 from vulnerabilities.data_source import DataSourceConfiguration
 from vulnerabilities.data_source import Reference
 from vulnerabilities.package_managers import GitHubTagsAPI
-from vulnerabilities.helpers import create_etag
+from vulnerabilities.package_managers import Version
+from vulnerabilities.helpers import nearest_patched_package
 
 
 @dataclasses.dataclass
@@ -54,12 +54,17 @@ class NginxDataSource(DataSource):
 
         # For some reason nginx tags it's releases are in the form of `release-1.2.3`
         # Chop off the `release-` part here.
-        for index, version in enumerate(self.version_api.cache["nginx/nginx"]):
-            self.version_api.cache["nginx/nginx"][index] = version.replace("release-", "")
+        normalized_versions = set()
+        while self.version_api.cache["nginx/nginx"]:
+            version = self.version_api.cache["nginx/nginx"].pop()
+            normalized_version = Version(
+                version.value.replace("release-", ""), version.release_date
+            )
+            normalized_versions.add(normalized_version)
+        self.version_api.cache["nginx/nginx"] = normalized_versions
 
     def updated_advisories(self):
         advisories = []
-        # if create_etag(data_src=self, url=self.url, etag_key="ETag"):
         self.set_api()
         data = requests.get(self.url).content
         advisories.extend(self.to_advisories(data))
@@ -112,8 +117,7 @@ class NginxDataSource(DataSource):
                 Advisory(
                     vulnerability_id=cve_id,
                     summary=summary,
-                    impacted_package_urls=vulnerable_packages,
-                    resolved_package_urls=fixed_packages,
+                    affected_packages=nearest_patched_package(vulnerable_packages, fixed_packages),
                 )
             )
 
@@ -137,11 +141,13 @@ class NginxDataSource(DataSource):
                 VersionSpecifier.from_scheme_version_spec_string("semver", "^" + rng[:-1])
             )
 
-        valid_versions = find_valid_versions(self.version_api.get("nginx/nginx"), version_ranges)
+        valid_versions = find_valid_versions(
+            self.version_api.get("nginx/nginx").valid_versions, version_ranges
+        )
 
-        return {
+        return [
             PackageURL(type="generic", name="nginx", version=version) for version in valid_versions
-        }
+        ]
 
     def extract_vuln_pkgs(self, vuln_info):
         vuln_status, version_infos = vuln_info.split(": ")
@@ -172,15 +178,17 @@ class NginxDataSource(DataSource):
                 )
             )
 
-        valid_versions = find_valid_versions(self.version_api.get("nginx/nginx"), version_ranges)
+        valid_versions = find_valid_versions(
+            self.version_api.get("nginx/nginx").valid_versions, version_ranges
+        )
         qualifiers = {}
         if windows_only:
             qualifiers["os"] = "windows"
 
-        return {
+        return [
             PackageURL(type="generic", name="nginx", version=version, qualifiers=qualifiers)
             for version in valid_versions
-        }
+        ]
 
 
 def find_valid_versions(versions, version_ranges):

@@ -23,8 +23,6 @@
 
 from urllib.parse import unquote
 
-from django.db.models import Q
-from django.urls import reverse
 from django_filters import rest_framework as filters
 from drf_spectacular.utils import extend_schema, inline_serializer
 from packageurl import PackageURL
@@ -53,7 +51,7 @@ class VulnerabilityReferenceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = VulnerabilityReference
-        fields = ["source", "reference_id", "url", "scores"]
+        fields = ["reference_id", "url", "scores"]
 
 
 class MinimalPackageSerializer(serializers.HyperlinkedModelSerializer):
@@ -77,7 +75,7 @@ class MinimalVulnerabilitySerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = Vulnerability
-        fields = ["url", "vulnerability_id", "references"]
+        fields = ["url", "vulnerability_id", "references", "summary"]
 
 
 class VulnerabilitySerializer(serializers.HyperlinkedModelSerializer):

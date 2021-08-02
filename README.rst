@@ -90,28 +90,21 @@ First clone the source code::
     cd vulnerablecode
 
 
-
-
 Using Docker Compose
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
-An easy way to set up VulnerableCode is with docker containers and docker
-compose. For this you need to have the following installed.
+Please find the docker documentation in `Docker Installation <docs/docker_installation.rst>`__
 
-- Docker Engine. Find instructions to install it
-  `here <https://docs.docker.com/get-docker/>`__
-- Docker Compose. Find instructions to install it
-  `here <https://docs.docker.com/compose/install/#install-compose>`__
+TL;DR
+""""""
 
-Use ``sudo docker-compose up`` to start VulnerableCode. Then access
-VulnerableCode at http://localhost:8000/ or at http://127.0.0.1:8000/
+.. code-block:: bash
 
-**Important**: Don't forget to run ``sudo docker-compose up -d --no-deps --build web`` to sync your instance after every ``git pull``.
+    git clone https://github.com/nexB/vulnerablecode.git && cd vulnerablecode
+    make envfile
+    docker-compose up
 
-
-Use ``sudo docker-compose exec web bash`` to access the VulnerableCode
-container. From here you can access ``manage.py`` and run management commands
-to import data as specified below.
+Go to http://localhost:8000/ on a web browser to access the web UI.
 
 
 Without Docker Compose
@@ -149,13 +142,8 @@ Create a virtualenv, install dependencies, generate static files and run the dat
     python3 -m venv venv
     source venv/bin/activate
     pip install -r requirements.txt
-    DJANGO_DEV=1 python manage.py collectstatic
-    DJANGO_DEV=1 python manage.py migrate
-
-The environment variable ``DJANGO_DEV`` is used to load settings suitable for
-development,  defined in ``vulnerablecode/dev.py``. If you
-don't want to type it every time use ``export DJANGO_DEV=1`` instead.
-Do not use `DJANGO_DEV` in a production environment.
+    python manage.py collectstatic
+    python manage.py migrate
 
 
 For a production mode, an environment variable named ``SECRET_KEY`` needs to be
@@ -164,11 +152,13 @@ for this purpose::
 
     SECRET_KEY=$(python -c "from django.core.management import utils; print(utils.get_random_secret_key())")
 
-You will also need to setup the VC_ALLOWED_HOSTS environment variable to match the hostname where the app is deployed::
+You will also need to setup the `ALLOWED_HOSTS` array inside `vulnerablecode/settings.py` according to
+[django specifications](https://docs.djangoproject.com/en/3.2/ref/settings/#allowed-hosts). One example would be:
+.. code-block:: python
 
-    VC_ALLOWED_HOSTS=vulnerablecode.your.domain.example.com
+    ALLOWED_HOSTS = ['vulnerablecode.your.domain.example.com']
 
-You can specify several host by separating them with a colon `:`
+You can specify several hosts by separating them with a comma (`,`)
 
 Using Nix
 ~~~~~~~~~
@@ -211,12 +201,14 @@ Non-Python dependencies are curated in::
 
 Run Tests
 ---------
-
+Make sure to install dev dependencies by running ``pip install -r requirements-dev.txt``
 Use these commands to run code style checks and the test suite::
 
     black -l 100 --check .
-    DJANGO_DEV=1 python -m pytest
+    python -m pytest
 
+
+.. _Data import:
 
 Data import
 -----------
@@ -233,15 +225,15 @@ for instructions on how to obtain your GitHub token.
 
 To run all data importers use::
 
-    DJANGO_DEV=1 python manage.py import --all
+    python manage.py import --all
 
 To list available importers use::
 
-    DJANGO_DEV=1 python manage.py import --list
+    python manage.py import --list
 
 To run specific importers::
 
-    DJANGO_DEV=1 python manage.py import rust npm 
+    python manage.py import rust npm 
 
 
 REST API access
@@ -249,7 +241,7 @@ REST API access
 
 Start the webserver::
 
-    DJANGO_DEV=1 python manage.py runserver
+    python manage.py runserver
 
 
 For full documentation about API endpoints use this URL::
@@ -271,7 +263,6 @@ If you want to run the import periodically, you can use a systemd timer::
 
     [Service]
     Type=oneshot
-    Environment="DJANGO_DEV=1"
     ExecStart=/path/to/venv/bin/python /path/to/vulnerablecode/manage.py import --all
 
     $ cat ~/.config/systemd/user/vulnerablecode.timer

@@ -30,50 +30,12 @@ from typing import Set
 
 import requests
 from packageurl import PackageURL
-from schema import Optional
-from schema import Or
-from schema import Regex
-from schema import Schema
 
 from vulnerabilities.data_source import Advisory
 from vulnerabilities.data_source import DataSource
 from vulnerabilities.data_source import DataSourceConfiguration
 from vulnerabilities.data_source import Reference
-
-
-def validate_schema(advisory_dict):
-
-    deb_versions = [
-        "bullseye",
-        "bullseye-security",
-        "buster",
-        "buster-security",
-        "sid",
-        "stretch",
-        "stretch-security",
-        "jessie",
-        "jessie-security",
-    ]
-    scheme = {
-        str: {
-            Or(Regex(r"CVE-\d+-\d+"), Regex(r"TEMP-.+-.+")): {
-                "releases": {
-                    Or(*deb_versions): {
-                        "repositories": {Or(*deb_versions): str},
-                        "status": str,
-                        "urgency": str,
-                        Optional("fixed_version"): str,
-                        Optional(str): object,
-                    }
-                },
-                Optional("description"): str,
-                Optional("debianbug"): int,
-                Optional(str): object,
-            }
-        }
-    }
-
-    Schema(scheme).validate(advisory_dict)
+from vulnerabilities.helpers import nearest_patched_package
 
 
 @dataclasses.dataclass
@@ -88,7 +50,6 @@ class DebianDataSource(DataSource):
     def __enter__(self):
         if self.response_is_new():
             self._api_response = self._fetch()
-            validate_schema(self._api_response)
 
         else:
             self._api_response = {}
@@ -106,35 +67,44 @@ class DebianDataSource(DataSource):
 
     def _parse(self, pkg_name: str, records: Mapping[str, Any]) -> List[Advisory]:
         advisories = []
+        ignored_versions = {"3.8.20-4."}
 
         for cve_id, record in records.items():
-            impacted_purls, resolved_purls = set(), set()
+            impacted_purls, resolved_purls = [], []
             if not cve_id.startswith("CVE"):
                 continue
 
             # vulnerabilities starting with something else may not be public yet
-            # see for instance https://web.archive.org/web/20201215213725/https://security-tracker.debian.org/tracker/TEMP-0000000-A2EB44  # nopep8
-            # TODO: this would need to be revisited though to ensure we are not missing out on anything  # nopep8
+            # see for instance https://web.archive.org/web/20201215213725/https://security-tracker.debian.org/tracker/TEMP-0000000-A2EB44
+            # TODO: this would need to be revisited though to ensure we are not missing out on anything
 
             for release_name, release_record in record["releases"].items():
                 if not release_record.get("repositories", {}).get(release_name):
+                    continue
+
+                version = release_record["repositories"][release_name]
+
+                if version in ignored_versions:
                     continue
 
                 purl = PackageURL(
                     name=pkg_name,
                     type="deb",
                     namespace="debian",
-                    version=release_record["repositories"][release_name],
+                    version=version,
                     qualifiers={"distro": release_name},
                 )
 
                 if release_record.get("status", "") == "resolved":
-                    resolved_purls.add(purl)
+                    resolved_purls.append(purl)
                 else:
-                    impacted_purls.add(purl)
+                    impacted_purls.append(purl)
 
-                if "fixed_version" in release_record:
-                    resolved_purls.add(
+                if (
+                    "fixed_version" in release_record
+                    and release_record["fixed_version"] not in ignored_versions
+                ):
+                    resolved_purls.append(
                         PackageURL(
                             name=pkg_name,
                             type="deb",
@@ -149,13 +119,11 @@ class DebianDataSource(DataSource):
             if debianbug:
                 bug_url = f"https://bugs.debian.org/cgi-bin/bugreport.cgi?bug={debianbug}"
                 references.append(Reference(url=bug_url, reference_id=debianbug))
-
             advisories.append(
                 Advisory(
                     vulnerability_id=cve_id,
+                    affected_packages=nearest_patched_package(impacted_purls, resolved_purls),
                     summary=record.get("description", ""),
-                    impacted_package_urls=impacted_purls,
-                    resolved_package_urls=resolved_purls,
                     references=references,
                 )
             )

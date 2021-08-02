@@ -19,20 +19,19 @@
 #  for any legal advice.
 #  VulnerableCode is a free software tool from nexB Inc. and others.
 #  Visit https://github.com/nexB/vulnerablecode/ for support and download.
-
 import asyncio
-from typing import List, Set
+from typing import Set
 
-import yaml
+from packageurl import PackageURL
 from univers.version_specifier import VersionSpecifier
 from univers.versions import SemverVersion
-from packageurl import PackageURL
 
-from vulnerabilities.data_source import GitDataSource
 from vulnerabilities.data_source import Advisory
+from vulnerabilities.data_source import GitDataSource
 from vulnerabilities.data_source import Reference
-from vulnerabilities.package_managers import HexVersionAPI
 from vulnerabilities.helpers import load_yaml
+from vulnerabilities.helpers import nearest_patched_package
+from vulnerabilities.package_managers import HexVersionAPI
 
 
 class ElixirSecurityDataSource(GitDataSource):
@@ -50,16 +49,7 @@ class ElixirSecurityDataSource(GitDataSource):
         asyncio.run(self.pkg_manager_api.load_api(packages))
 
     def updated_advisories(self) -> Set[Advisory]:
-        files = self._updated_files
-        advisories = []
-        for f in files:
-            processed_data = self.process_file(f)
-            if processed_data:
-                advisories.append(processed_data)
-        return self.batch_advisories(advisories)
-
-    def added_advisories(self) -> Set[Advisory]:
-        files = self._added_files
+        files = self._updated_files.union(self._added_files)
         advisories = []
         for f in files:
             processed_data = self.process_file(f)
@@ -84,7 +74,7 @@ class ElixirSecurityDataSource(GitDataSource):
 
         safe_pkg_versions = []
         vuln_pkg_versions = []
-        all_version_list = self.pkg_manager_api.get(pkg_name)
+        all_version_list = self.pkg_manager_api.get(pkg_name).valid_versions
         if not version_range_list:
             return [], all_version_list
         version_ranges = [
@@ -123,13 +113,13 @@ class ElixirSecurityDataSource(GitDataSource):
         safe_purls = []
         vuln_purls = []
 
-        safe_purls = {
+        safe_purls = [
             PackageURL(name=pkg_name, type="hex", version=version) for version in safe_pkg_versions
-        }
+        ]
 
-        vuln_purls = {
+        vuln_purls = [
             PackageURL(name=pkg_name, type="hex", version=version) for version in vuln_pkg_versions
-        }
+        ]
 
         references = [
             Reference(
@@ -142,8 +132,7 @@ class ElixirSecurityDataSource(GitDataSource):
 
         return Advisory(
             summary=yaml_file["description"],
-            impacted_package_urls=vuln_purls,
-            resolved_package_urls=safe_purls,
+            affected_packages=nearest_patched_package(vuln_purls, safe_purls),
             vulnerability_id=cve_id,
             references=references,
         )

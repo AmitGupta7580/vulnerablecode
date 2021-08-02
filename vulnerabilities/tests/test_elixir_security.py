@@ -30,6 +30,8 @@ from vulnerabilities.data_source import Advisory
 from vulnerabilities.data_source import Reference
 from vulnerabilities.importers.elixir_security import ElixirSecurityDataSource
 from vulnerabilities.package_managers import HexVersionAPI
+from vulnerabilities.package_managers import Version
+from vulnerabilities.helpers import AffectedPackage
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -44,17 +46,17 @@ class TestElixirSecurityDataSource(TestCase):
         cls.data_src.pkg_manager_api = HexVersionAPI(
             {
                 "coherence": [
-                    "0.5.2",
-                    "0.5.1",
-                    "0.5.0",
-                    "0.4.0",
-                    "0.3.1",
-                    "0.3.0",
-                    "0.2.0",
-                    "0.1.3",
-                    "0.1.2",
-                    "0.1.1",
-                    "0.1.0",
+                    Version("0.5.2"),
+                    Version("0.5.1"),
+                    Version("0.5.0"),
+                    Version("0.4.0"),
+                    Version("0.3.1"),
+                    Version("0.3.0"),
+                    Version("0.2.0"),
+                    Version("0.1.3"),
+                    Version("0.1.2"),
+                    Version("0.1.1"),
+                    Version("0.1.0"),
                 ]
             }
         )
@@ -64,65 +66,188 @@ class TestElixirSecurityDataSource(TestCase):
         path = os.path.join(BASE_DIR, "test_data/elixir_security/test_file.yml")
         expected_advisory = Advisory(
             summary=('The Coherence library has "Mass Assignment"-like vulnerabilities.\n'),
-            impacted_package_urls={
-                PackageURL(
-                    type="hex",
-                    name="coherence",
-                    version="0.5.1",
+            affected_packages=[
+                AffectedPackage(
+                    vulnerable_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.1.0",
+                        qualifiers={},
+                        subpath=None,
+                    ),
+                    patched_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.5.2",
+                        qualifiers={},
+                        subpath=None,
+                    ),
                 ),
-                PackageURL(
-                    type="hex",
-                    name="coherence",
-                    version="0.5.0",
+                AffectedPackage(
+                    vulnerable_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.1.1",
+                        qualifiers={},
+                        subpath=None,
+                    ),
+                    patched_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.5.2",
+                        qualifiers={},
+                        subpath=None,
+                    ),
                 ),
-                PackageURL(
-                    type="hex",
-                    name="coherence",
-                    version="0.4.0",
+                AffectedPackage(
+                    vulnerable_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.1.2",
+                        qualifiers={},
+                        subpath=None,
+                    ),
+                    patched_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.5.2",
+                        qualifiers={},
+                        subpath=None,
+                    ),
                 ),
-                PackageURL(
-                    type="hex",
-                    name="coherence",
-                    version="0.3.1",
+                AffectedPackage(
+                    vulnerable_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.1.3",
+                        qualifiers={},
+                        subpath=None,
+                    ),
+                    patched_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.5.2",
+                        qualifiers={},
+                        subpath=None,
+                    ),
                 ),
-                PackageURL(
-                    type="hex",
-                    name="coherence",
-                    version="0.3.0",
+                AffectedPackage(
+                    vulnerable_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.2.0",
+                        qualifiers={},
+                        subpath=None,
+                    ),
+                    patched_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.5.2",
+                        qualifiers={},
+                        subpath=None,
+                    ),
                 ),
-                PackageURL(
-                    type="hex",
-                    name="coherence",
-                    version="0.2.0",
+                AffectedPackage(
+                    vulnerable_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.3.0",
+                        qualifiers={},
+                        subpath=None,
+                    ),
+                    patched_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.5.2",
+                        qualifiers={},
+                        subpath=None,
+                    ),
                 ),
-                PackageURL(
-                    type="hex",
-                    name="coherence",
-                    version="0.1.3",
+                AffectedPackage(
+                    vulnerable_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.3.1",
+                        qualifiers={},
+                        subpath=None,
+                    ),
+                    patched_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.5.2",
+                        qualifiers={},
+                        subpath=None,
+                    ),
                 ),
-                PackageURL(
-                    type="hex",
-                    name="coherence",
-                    version="0.1.2",
+                AffectedPackage(
+                    vulnerable_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.4.0",
+                        qualifiers={},
+                        subpath=None,
+                    ),
+                    patched_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.5.2",
+                        qualifiers={},
+                        subpath=None,
+                    ),
                 ),
-                PackageURL(
-                    type="hex",
-                    name="coherence",
-                    version="0.1.1",
+                AffectedPackage(
+                    vulnerable_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.5.0",
+                        qualifiers={},
+                        subpath=None,
+                    ),
+                    patched_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.5.2",
+                        qualifiers={},
+                        subpath=None,
+                    ),
                 ),
-                PackageURL(
-                    type="hex",
-                    name="coherence",
-                    version="0.1.0",
+                AffectedPackage(
+                    vulnerable_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.5.1",
+                        qualifiers={},
+                        subpath=None,
+                    ),
+                    patched_package=PackageURL(
+                        type="hex",
+                        namespace=None,
+                        name="coherence",
+                        version="0.5.2",
+                        qualifiers={},
+                        subpath=None,
+                    ),
                 ),
-            },
-            resolved_package_urls={
-                PackageURL(
-                    type="hex",
-                    name="coherence",
-                    version="0.5.2",
-                ),
-            },
+            ],
             references=[
                 Reference(
                     reference_id="2aae6e3a-24a3-4d5f-86ff-b964eaf7c6d1",
